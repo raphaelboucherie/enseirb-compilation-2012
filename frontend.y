@@ -84,6 +84,8 @@ primary_expression
   $<data.code>$=malloc(1);
   *($<data.code>$)='\0';
   $<data.val>$=$1;
+  $<data.t>$=cherche_symbole(T,$1);
+  //$<data.id>$=$1;
 
 }
 | CONSTANT                                               
@@ -91,6 +93,13 @@ primary_expression
   $<data.code>$=malloc(1);
   *($<data.code>$)='\0';
   $<data.val>$=$1;
+  $<data.t>$=malloc(sizeof(struct type));
+  $<data.t>$->t=_INT;
+  $<data.t>$->dimension=0;
+  $<data.t>$->dimensions=NULL;
+  $<data.t>$->retour=NULL;
+  $<data.t>$->parametres=NULL;
+  $<data.t>$->nb_parametres=0;
 }
 | '(' expression ')'                                      
 {
@@ -104,29 +113,47 @@ primary_expression
   *($<data.code>$)='\0';
   $<data.val>$=malloc((1+strlen($1)+2));
   sprintf($<data.val>$,"%s()",$1);
-  free($1);
+  struct type* t= cherche_symbole(T,$1);
+  if (NULL==t)
+    fprintf(stderr,"fonction non déclarée %s",$1);
+  else
+    $<data.t>$=cherche_symbole(T,$1)->retour;
+  //  $<data.id>$=$1;
 }
 | IDENTIFIER '(' argument_expression_list ')'              
 {
   $<data.appel=1>$;
   $<data.code>$=$<data.code>3;
   $<data.val>$=malloc(1+strlen($1)+2+1+strlen($<data.val>3));
-  sprintf($<data.val>$,"%s(%s)",$1,$<data.val>3);free($1);}
+  sprintf($<data.val>$,"%s(%s)",$1,$<data.val>3); 
+  struct type* t= cherche_symbole(T,$1);
+  if (NULL==t)
+    fprintf(stderr,"fonction non déclarée %s",$1);
+  else
+    $<data.t>$=cherche_symbole(T,$1)->retour;
+  //$<data.id>$=$1;
+}
 | IDENTIFIER INC_OP                                     
 {
   $<data.code>$=malloc(1);
   *($<data.code>$)='\0';
   $<data.val>$=malloc(1+strlen($1)+2);
   sprintf($<data.val>$,"%s++",$1);
-  free($1);
+  //$<data.id>$=$1;
+  $<data.t>$=cherche_symbole(T,$1);
+  $<data.appel>$=1;
+  
 }
 | IDENTIFIER DEC_OP                                        
 {
+  $<data.appel>$=1;
   $<data.code>$=malloc(1);
   *($<data.code>$)='\0';
   $<data.val>$=malloc(1+strlen($1)+2);
   sprintf($<data.val>$,"%s--",$1);
-  free($1);
+  $<data.t>$=cherche_symbole(T,$1);
+  //$<data.id>$=$1;
+  
 }
 ;
 
@@ -135,6 +162,7 @@ postfix_expression
 {
   $<data.code>$=$<data.code>1;
   $<data.val>$=$<data.val>1;
+  $<data.t>$=$<data.t>1;
 }
 | postfix_expression '[' expression ']'        
 {
@@ -142,6 +170,9 @@ postfix_expression
   sprintf($<data.code>$,"%s %s",$<data.code>1,$<data.code>3);
   $<data.val>$=malloc(1+strlen($<data.val>1)+1+strlen($<data.val>3)+2);
   sprintf($<data.val>$,"%s[%s]",$<data.val>1,$<data.val>3);
+  $<data.t>$=$<data.t>1;
+  $<data.t>$->dimension--;
+  
   free($<data.code>1);
   free($<data.code>3);
 }
@@ -173,14 +204,19 @@ unary_expression
 }
 | INC_OP unary_expression 
 {
+  $<data.appel>$=1;
   $<data.code>$=$<data.code>2;
   $<data.val>$=malloc(1+strlen($<data.val>2)+2);
+  $<data.id>$=$<data.id>2;
   sprintf($<data.val>$,"++%s",$<data.val>2);
-
+  $<data.t>$=$<data.t>2;
 }
 | DEC_OP unary_expression                        
 
 {
+  $<data.t>$=$<data.t>2;
+  $<data.appel>$=1;
+  $<data.id>$=$<data.id>2;
   $<data.code>$=$<data.code>2;
   $<data.val>$=malloc(1+strlen($<data.val>2)+2);
   sprintf($<data.val>$,"--%s",$<data.val>2);
@@ -189,6 +225,8 @@ unary_expression
 | unary_operator unary_expression                 
 
 {
+  $<data.t>$=$<data.t>2;
+  $<data.id>$=$<data.id>2;
   $<data.code>$=$<data.code>2;
   $<data.val>$=malloc(1+strlen($<data.val>2)+1+strlen($<data.code>1));
   sprintf($<data.val>$,"%s%s",$<data.code>1,$<data.val>2);
@@ -219,21 +257,21 @@ unary_operator
 multiplicative_expression
 : unary_expression                                            
   
-{
+{ 
+  fprintf(stderr,"**mul->unary**\n");
   if ($<data.appel>1==1)
     {
       $$=$1;
     }
   else
     {
-      fprintf(stderr,"**mul->unary**\n");
+ 
       $<data.val>$=malloc(8+digit_number(tmpmul));
       sprintf($<data.val>$,"tmpmul%d",tmpmul);
       $<data.code>$=malloc(1+strlen($<data.code>1)+12+digit_number(tmpmul)+strlen($<data.val>1)+1);
       sprintf($<data.code>$,"%stmpmul%d=%s;\n",$<data.code>1,tmpmul,$<data.val>1);
-      //ajout_symbole(T,$<data.val>$,cherche_symbole(t,$<data.val>1));
-
-
+      ajout_symbole(T,$<data.val>$,$<data.t>1);
+      $<data.t>$=$<data.t>1;
       tmpmul++;free($<data.code>1);
     }
 }
@@ -242,16 +280,34 @@ multiplicative_expression
 | multiplicative_expression '*' unary_expression  
 
 {
+  
+    
   fprintf(stderr,"**mul->mul*unary**\n"); 
-  $<data.val>$=malloc(1+strlen($<data.val>1));
-  sprintf($<data.val>$,"%s",$<data.val>1);
-  $<data.code>$=malloc(13+1+strlen($<data.code>1)+1+strlen($<data.code>3)+2*digit_number(tmp)+1+strlen($<data.val>3)+1+strlen($<data.val>1));
-  sprintf($<data.code>$,"%s%stmp%d=%s;%s*=tmp%d;\n",$<data.code>1,$<data.code>3,tmp,$<data.val>3,$<data.val>1,tmp);
-  char *c;
-  c=malloc(3+digit_number(tmp));
-  sprintf(c,"tmp%d",tmp);
-  ajout_symbole(T,c,cherche_symbole(T,$<data.val>3));
-  tmp++;free($<data.code>1);free($<data.code>3);
+  if($<data.appel>1==1)
+    { 
+      $<data.val>$=malloc(8+digit_number(tmpmul));
+      sprintf($<data.val>$,"tmpmul%d",tmpmul);
+      $<data.code>$=malloc(1+strlen($<data.code>1)+23+1+strlen($<data.val>$)+strlen($<data.val>1)+1+strlen($<data.code>3)+1+digit_number(tmp)+strlen($<data.val>3)+1);
+      sprintf($<data.code>$,"%s%s%s=%s;tmp%d=%s;%s*=tmp%d;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,tmp,$<data.val>3,$<data.val>$,tmp);
+      ajout_symbole(T,$<data.val>$,$<data.t>3);
+      char *c;
+      c=malloc(3+digit_number(tmp));
+      sprintf(c,"tmp%d",tmp);
+      ajout_symbole(T,c,$<data.t>3);
+      tmp++;tmpmul++;
+    }
+  else
+    {
+      $<data.val>$=malloc(1+strlen($<data.val>1));
+      sprintf($<data.val>$,"%s",$<data.val>1);
+      $<data.code>$=malloc(13+1+strlen($<data.code>1)+1+strlen($<data.code>3)+2*digit_number(tmp)+1+strlen($<data.val>3)+1+strlen($<data.val>1));
+      sprintf($<data.code>$,"%s%stmp%d=%s;%s*=tmp%d;\n",$<data.code>1,$<data.code>3,tmp,$<data.val>3,$<data.val>1,tmp);
+      char *c;
+      c=malloc(3+digit_number(tmp));
+      sprintf(c,"tmp%d",tmp);
+      ajout_symbole(T,c,$<data.t>3);
+      tmp++;free($<data.code>1);free($<data.code>3);
+    }
 }
 
 | multiplicative_expression '|' unary_expression                  
@@ -264,7 +320,7 @@ multiplicative_expression
   char *c;
   c=malloc(3+digit_number(tmp));
   sprintf(c,"tmp%d",tmp);
-  ajout_symbole(T,c,cherche_symbole(T,$<data.val>1));
+  ajout_symbole(T,c,$<data.t>1);
   c=realloc(c,6+digit_number(tmpmul));
   sprintf(c,"tmpmul%d",tmpmul);
   struct type *t=malloc(sizeof(*t));
@@ -287,28 +343,60 @@ additive_expression
 
 {fprintf(stderr,"**add->mul**\n");
   $$=$1;/*malloc(strlen($<data.code>1)+16+digit_number(tmpadd)+digit_number(tmpmul-1));
-  sprintf($<data.code>$,"%s\ntmpadd%d=tmpmul%d;",$<data.code>1,tmpadd,tmpmul-1);
-  tmpaddsave=tmpadd;
-  tmpadd++;
-  free($<data.code>1);*/
+	  sprintf($<data.code>$,"%s\ntmpadd%d=tmpmul%d;",$<data.code>1,tmpadd,tmpmul-1);
+	  tmpaddsave=tmpadd;
+	  tmpadd++;
+	  free($<data.code>1);*/
 }
 | additive_expression '+' multiplicative_expression              
-{
-  fprintf(stderr,"**add->add+mul**\n");
-  $<data.val>$=$<data.val>1;/*malloc(8+digit_number(tmpmul));
-			      sprintf($<data.val>$,"tmpmul%d",tmpmul);*/
-  $<data.code>$=malloc(strlen($<data.code>1)+1+strlen($<data.code>3)+1+5+strlen($<data.val>1)+1+strlen($<data.val>3));
-  sprintf($<data.code>$,"%s%s %s+=%s;\n",$<data.code>3,$<data.code>1,$<data.val>1,$<data.val>3);
-  free($<data.code>1);free($<data.code>3);
+{ 
+  if($<data.appel>1==1)
+    {
+      $<data.val>$=malloc(8+digit_number(tmpmul));
+      sprintf($<data.val>$,"tmpmul%d",tmpmul);
+      $<data.code>$=malloc(1+strlen($<data.code>1)+23+1+strlen($<data.val>$)+strlen($<data.val>1)+1+strlen($<data.code>3)+1+digit_number(tmp)+strlen($<data.val>3)+1);
+      sprintf($<data.code>$,"%s%s%s=%s;tmp%d=%s;%s+=tmp%d;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,tmp,$<data.val>3,$<data.val>$,tmp);
+      ajout_symbole(T,$<data.val>$,$<data.t>3);
+      char *c;
+      c=malloc(4+digit_number(tmp));
+      sprintf(c,"tmp%d",tmp);
+      ajout_symbole(T,c,$<data.t>3);
+      tmp++;tmpmul++;
+    }
+  else
+    {
+      fprintf(stderr,"**add->add+mul**\n");
+      $<data.val>$=$<data.val>1;/*malloc(8+digit_number(tmpmul));
+				  sprintf($<data.val>$,"tmpmul%d",tmpmul);*/
+      $<data.code>$=malloc(strlen($<data.code>1)+1+strlen($<data.code>3)+1+5+strlen($<data.val>1)+1+strlen($<data.val>3));
+      sprintf($<data.code>$,"%s%s %s+=%s;\n",$<data.code>3,$<data.code>1,$<data.val>1,$<data.val>3);
+      free($<data.code>1);free($<data.code>3);
+    }
 }
 | additive_expression '-' multiplicative_expression                
 {
-  fprintf(stderr,"**add->add-mul**\n");
-  $<data.val>$=$<data.val>1;/*malloc(8+digit_number(tmpmul));
-			      sprintf($<data.val>$,"tmpmul%d",tmpmul);*/
-  $<data.code>$=malloc(strlen($<data.code>1)+1+strlen($<data.code>3)+1+9+digit_number(tmpmul-1)+digit_number(tmpadd-1));
-  sprintf($<data.code>$,"%s%s %s-=%s;\n",$<data.code>3,$<data.code>1,$<data.val>1,$<data.val>3);
-  free($<data.code>1);free($<data.code>3);
+  if($<data.appel>1==1)
+    {
+      $<data.val>$=malloc(8+digit_number(tmpmul));
+      sprintf($<data.val>$,"tmpmul%d",tmpmul);
+      $<data.code>$=malloc(1+strlen($<data.code>1)+23+1+strlen($<data.val>$)+strlen($<data.val>1)+1+strlen($<data.code>3)+1+digit_number(tmp)+strlen($<data.val>3)+1);
+      sprintf($<data.code>$,"%s%s%s=%s;tmp%d=%s;%s-=tmp%d;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,tmp,$<data.val>3,$<data.val>$,tmp);
+      ajout_symbole(T,$<data.val>$,$<data.t>3);
+      char *c;
+      c=malloc(3+digit_number(tmp));
+      sprintf(c,"tmp%d",tmp);
+      ajout_symbole(T,c,$<data.t>3);
+      tmp++;tmpmul++;
+    }
+  else
+    {
+      fprintf(stderr,"**add->add-mul**\n");
+      $<data.val>$=$<data.val>1;/*malloc(8+digit_number(tmpmul));
+				  sprintf($<data.val>$,"tmpmul%d",tmpmul);*/
+      $<data.code>$=malloc(strlen($<data.code>1)+1+strlen($<data.code>3)+1+9+digit_number(tmpmul-1)+digit_number(tmpadd-1));
+      sprintf($<data.code>$,"%s%s %s-=%s;\n",$<data.code>3,$<data.code>1,$<data.val>1,$<data.val>3);
+      free($<data.code>1);free($<data.code>3);
+    }
 }
 ;
 
@@ -319,16 +407,18 @@ comparison_expression
  
 
   $$=$1;/*malloc(strlen($<data.code>1)+1+17+digit_number(tmpadd-1)+digit_number(tmpcomp-1));
-  sprintf($<data.code>$,"%s\ntmpcomp%d=tmpadd%d;\n",$<data.code>1,tmpcomp,tmpadd-1);
-  tmpcomp++;
-  free($<data.code>1);
-		*/
+	  sprintf($<data.code>$,"%s\ntmpcomp%d=tmpadd%d;\n",$<data.code>1,tmpcomp,tmpadd-1);
+	  tmpcomp++;
+	  free($<data.code>1);
+	*/
 }
 | additive_expression '<' additive_expression
 {
   fprintf(stderr,"**comp ->add<add**\n");
-  $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+30+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*digit_number(tmpcomp));
-  sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (%s<%s) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,$<data.val>1,$<data.val>3,tmpcomp);
+  $<data.val>$=malloc(8+digit_number(tmpcomp));
+  sprintf($<data.val>$,"tmpcomp%d",tmpcomp);
+  $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+30+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*(1+strlen($<data.val>$)));
+  sprintf($<data.code>$,"%s%s%s=0;\nif (%s<%s) %s=1;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,$<data.val>3,$<data.val>$);
   
   char *c;
   c=malloc(7+digit_number(tmpcomp));
@@ -350,10 +440,14 @@ comparison_expression
 }
 
 | additive_expression '>' additive_expression           
-{ $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+30+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*digit_number(tmpcomp));
-  sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (%s>%s) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,$<data.val>1,$<data.val>3,tmpcomp);
-
- char *c;
+{
+  fprintf(stderr,"**comp ->add<add**\n");
+  $<data.val>$=malloc(8+digit_number(tmpcomp));
+  sprintf($<data.val>$,"tmpcomp%d",tmpcomp);
+  $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+30+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*(1+strlen($<data.val>$)));
+  sprintf($<data.code>$,"%s%s%s=0;\nif (%s>%s) %s=1;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,$<data.val>3,$<data.val>$);
+  
+  char *c;
   c=malloc(7+digit_number(tmpcomp));
   sprintf(c,"tmpcomp%d",tmpcomp);
   struct type *t=malloc(sizeof(*t));
@@ -364,25 +458,25 @@ comparison_expression
   t->nb_parametres=0;
   t->parametres=NULL;
   ajout_symbole(T,c,t);
-
-
-
+  
+  
+  
   tmpcomp++;
   free($<data.code>1);
   free($<data.code>3);
   fprintf(stderr,"**comp ->add>add**\n");/*
-  $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+42+digit_number(tmpaddsave-1)+digit_number(tmpadd)+2*digit_number(tmpcomp));
-  sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (tmpadd%d>tmpadd%d) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,tmpaddsave-1,tmpadd-1,tmpcomp);
-  free($<data.code>1);free($<data.code>3);tmpcomp++;*/
+					   $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+42+digit_number(tmpaddsave-1)+digit_number(tmpadd)+2*digit_number(tmpcomp));
+					   sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (tmpadd%d>tmpadd%d) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,tmpaddsave-1,tmpadd-1,tmpcomp);
+					   free($<data.code>1);free($<data.code>3);tmpcomp++;*/
 }
 | additive_expression LE_OP additive_expression     
 {
-  fprintf(stderr,"**comp ->add<=add**\n");
-$<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+31+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*digit_number(tmpcomp));
-  sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (%s<=%s) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,$<data.val>1,$<data.val>3,tmpcomp);
-
-
- char *c;
+  $<data.val>$=malloc(8+digit_number(tmpcomp));
+  sprintf($<data.val>$,"tmpcomp%d",tmpcomp);
+  $<data.code>$=malloc(1+1+strlen($<data.code>1)+1+strlen($<data.code>3)+30+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*(1+strlen($<data.val>$)));
+  sprintf($<data.code>$,"%s%s%s=0;\nif (%s<=%s) %s=1;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,$<data.val>3,$<data.val>$);
+  
+  char *c;
   c=malloc(7+digit_number(tmpcomp));
   sprintf(c,"tmpcomp%d",tmpcomp);
   struct type *t=malloc(sizeof(*t));
@@ -393,29 +487,36 @@ $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+31+1+strlen
   t->nb_parametres=0;
   t->parametres=NULL;
   ajout_symbole(T,c,t);
-
-
-
-
-
-
+  
+  
+  
   tmpcomp++;
   free($<data.code>1);
   free($<data.code>3);
-/*
-$<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+42+digit_number(tmpaddsave-1)+digit_number(tmpadd)+2*digit_number(tmpcomp));
-sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (tmpadd%d<=tmpadd%d) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,tmpaddsave-1,tmpadd-1,tmpcomp);
-free($<data.code>1);free($<data.code>3);tmpcomp++;*/
+
+		       
+  fprintf(stderr,"**comp ->add<=add**\n");
+
+
+
+
+
+  /*
+    $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+42+digit_number(tmpaddsave-1)+digit_number(tmpadd)+2*digit_number(tmpcomp));
+    sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (tmpadd%d<=tmpadd%d) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,tmpaddsave-1,tmpadd-1,tmpcomp);
+    free($<data.code>1);free($<data.code>3);tmpcomp++;*/
 }
 
 | additive_expression GE_OP additive_expression 
 {
-fprintf(stderr,"**comp ->add>=add**\n");
 
-$<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+31+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*digit_number(tmpcomp));
-  sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (%s>=%s) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,$<data.val>1,$<data.val>3,tmpcomp);
 
- char *c;
+  $<data.val>$=malloc(8+digit_number(tmpcomp));
+  sprintf($<data.val>$,"tmpcomp%d",tmpcomp);
+  $<data.code>$=malloc(1+1+strlen($<data.code>1)+1+strlen($<data.code>3)+30+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*(1+strlen($<data.val>$)));
+  sprintf($<data.code>$,"%s%s%s=0;\nif (%s>=%s) %s=1;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,$<data.val>3,$<data.val>$);
+  
+  char *c;
   c=malloc(7+digit_number(tmpcomp));
   sprintf(c,"tmpcomp%d",tmpcomp);
   struct type *t=malloc(sizeof(*t));
@@ -426,27 +527,31 @@ $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+31+1+strlen
   t->nb_parametres=0;
   t->parametres=NULL;
   ajout_symbole(T,c,t);
-
-
-
-
-
+  
+  
+  
   tmpcomp++;
   free($<data.code>1);
   free($<data.code>3);
-/*
-$<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+42+digit_number(tmpaddsave-1)+digit_number(tmpadd)+2*digit_number(tmpcomp));
-sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (tmpadd%d>=tmpadd%d) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,tmpaddsave-1,tmpadd-1,tmpcomp);
-free($<data.code>1);free($<data.code>3);tmpcomp++;*/
+
+  fprintf(stderr,"**comp ->add>=add**\n");
+
+ 
+
+  /*
+    $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+42+digit_number(tmpaddsave-1)+digit_number(tmpadd)+2*digit_number(tmpcomp));
+    sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (tmpadd%d>=tmpadd%d) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,tmpaddsave-1,tmpadd-1,tmpcomp);
+    free($<data.code>1);free($<data.code>3);tmpcomp++;*/
 }
 | additive_expression EQ_OP additive_expression            
 {
-  fprintf(stderr,"**comp ->add==add**\n");
-  
-  $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+31+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*digit_number(tmpcomp));
-  sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (%s==%s) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,$<data.val>1,$<data.val>3,tmpcomp);
 
- char *c;
+  $<data.val>$=malloc(8+digit_number(tmpcomp));
+  sprintf($<data.val>$,"tmpcomp%d",tmpcomp);
+  $<data.code>$=malloc(1+1+strlen($<data.code>1)+1+strlen($<data.code>3)+30+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*(1+strlen($<data.val>$)));
+  sprintf($<data.code>$,"%s%s%s=0;\nif (%s==%s) %s=1;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,$<data.val>3,$<data.val>$);
+  
+  char *c;
   c=malloc(7+digit_number(tmpcomp));
   sprintf(c,"tmpcomp%d",tmpcomp);
   struct type *t=malloc(sizeof(*t));
@@ -457,23 +562,31 @@ free($<data.code>1);free($<data.code>3);tmpcomp++;*/
   t->nb_parametres=0;
   t->parametres=NULL;
   ajout_symbole(T,c,t);
-
-
+		       
+  
+  
   tmpcomp++;
   free($<data.code>1);
   free($<data.code>3);
-/*
-$<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+42+digit_number(tmpaddsave-1)+digit_number(tmpadd)+2*digit_number(tmpcomp));
-sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (tmpadd%d==tmpadd%d) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,tmpaddsave-1,tmpadd-1,tmpcomp);
-free($<data.code>1);free($<data.code>3);tmpcomp++;*/
+  fprintf(stderr,"**comp ->add==add**\n");
+  
+  
+
+  /*
+    $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+42+digit_number(tmpaddsave-1)+digit_number(tmpadd)+2*digit_number(tmpcomp));
+    sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (tmpadd%d==tmpadd%d) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,tmpaddsave-1,tmpadd-1,tmpcomp);
+    free($<data.code>1);free($<data.code>3);tmpcomp++;*/
 }
 | additive_expression NE_OP additive_expression             
 {
-fprintf(stderr,"**comp ->add!=add**\n");
+  fprintf(stderr,"**comp ->add!=add**\n");
 
-$<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+31+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*digit_number(tmpcomp));
-  sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (%s!=%s) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,$<data.val>1,$<data.val>3,tmpcomp);
- char *c;
+  $<data.val>$=malloc(8+digit_number(tmpcomp));
+  sprintf($<data.val>$,"tmpcomp%d",tmpcomp);
+  $<data.code>$=malloc(1+1+strlen($<data.code>1)+1+strlen($<data.code>3)+30+1+strlen($<data.val>1)+1+strlen($<data.val>3)+2*(1+strlen($<data.val>$)));
+  sprintf($<data.code>$,"%s%s%s=0;\nif (%s!=%s) %s=1;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,$<data.val>3,$<data.val>$);
+  
+  char *c;
   c=malloc(7+digit_number(tmpcomp));
   sprintf(c,"tmpcomp%d",tmpcomp);
   struct type *t=malloc(sizeof(*t));
@@ -484,15 +597,16 @@ $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+31+1+strlen
   t->nb_parametres=0;
   t->parametres=NULL;
   ajout_symbole(T,c,t);
+		      
 
 
   tmpcomp++;
   free($<data.code>1);
   free($<data.code>3);
-/*
-$<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+42+digit_number(tmpaddsave-1)+digit_number(tmpadd)+2*digit_number(tmpcomp));
-sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (tmpadd%d!=tmpadd%d) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,tmpaddsave-1,tmpadd-1,tmpcomp);
-free($<data.code>1);free($<data.code>3);tmpcomp++;*/
+  /*
+    $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.code>3)+42+digit_number(tmpaddsave-1)+digit_number(tmpadd)+2*digit_number(tmpcomp));
+    sprintf($<data.code>$,"%s%stmpcomp%d=0;\nif (tmpadd%d!=tmpadd%d) tmpcomp%d=1;\n",$<data.code>1,$<data.code>3,tmpcomp,tmpaddsave-1,tmpadd-1,tmpcomp);
+    free($<data.code>1);free($<data.code>3);tmpcomp++;*/
 }
 ;
 
@@ -513,10 +627,10 @@ expression
 | comparison_expression                                             
 {$$=$1;
   /*
-  $<data.code>$=$<data.code>1;
-  $<data.val>$=malloc(8+digit_number(tmpcomp-1));
-  sprintf($<data.val>$,"tmpcomp%d",tmpcomp-1);
- */
+    $<data.code>$=$<data.code>1;
+    $<data.val>$=malloc(8+digit_number(tmpcomp-1));
+    sprintf($<data.val>$,"tmpcomp%d",tmpcomp-1);
+  */
 }
 ;
 
@@ -550,17 +664,17 @@ declaration
   sprintf($<data.code>$,"%s %s;\n",$<data.code>1,$<data.code>2);
   switch (*$<data.code>1)
     {
-    case('I'):
+    case('i'):
       $<data.t>2->t=_INT;
-	break;
-    case('F'):
+      break;
+    case('f'):
       $<data.t>2->t=_FLOAT;
       break;
     default:
       fprintf(stderr,"déclaration de variable void%s%s",$<data.code>1,$<data.code>2);
     }
   free($<data.code>1);
-  free($<data.code>2);
+  //  free($<data.code>2);
 }
 ;
 
@@ -576,7 +690,7 @@ declarator_list
   $<data.t>1->t=$<data.t>$->t;
   $<data.code>$=malloc(1+strlen($<data.code>1)+1+1+strlen($<data.code>3));
   sprintf($<data.code>$,"%s,%s",$<data.code>1,$<data.code>3);
-  free($<data.code>1);
+  //free($<data.code>1);
   free($<data.code>3);
 }
 ;
@@ -635,12 +749,12 @@ declarator
 }
 | declarator '(' parameter_list ')'
 {
-   $<data.t>$=$<data.t>1;
-   $<data.t>$->t=_FONCTION;
-   $<data.t>$->nb_parametres=$<data.t>3->nb_parametres;
-   $<data.t>$->parametres=$<data.t>3->parametres;
-   $<data.code>$=malloc(1+strlen($<data.code>1)+2+1+strlen($<data.code>3));
-   sprintf($<data.code>$,"%s(%s)",$<data.code>1,$<data.code>3);free($<data.code>1);free($<data.code>3);
+  $<data.t>$=$<data.t>1;
+  $<data.t>$->t=_FONCTION;
+  $<data.t>$->nb_parametres=$<data.t>3->nb_parametres;
+  $<data.t>$->parametres=$<data.t>3->parametres;
+  $<data.code>$=malloc(1+strlen($<data.code>1)+2+1+strlen($<data.code>3));
+  sprintf($<data.code>$,"%s(%s)",$<data.code>1,$<data.code>3);//free($<data.code>1);free($<data.code>3);
 }
 | declarator '(' ')'          
 {  
@@ -665,6 +779,7 @@ parameter_list
   sprintf($<data.code>$,"%s,%s",$<data.code>1,$<data.code>3);
   $<data.t>$->nb_parametres++;
   $<data.t>$->parametres=realloc( $<data.t>$->parametres,sizeof(struct type)*$<data.t>$->nb_parametres);
+  
   $<data.t>$->parametres[$<data.t>$->nb_parametres-1]=*$<data.t>3;
   free($<data.code>3);
   free($<data.code>1);
@@ -680,10 +795,10 @@ parameter_declaration
   sprintf($<data.code>$,"%s %s",$<data.code>1,$<data.code>2);$<data.t>$=$<data.t>2;
   switch (*$<data.code>1)
     {
-    case ('F'):
+    case ('f'):
       $<data.t>$->t=_FLOAT;
       break;
-    case ('I'):
+    case ('i'):
       $<data.t>$->t=_INT;
       break;
     default:
@@ -706,7 +821,7 @@ statement
   if ($<data.appel>$==1)
     {
       $<data.code>$=malloc(1+strlen($<data.code>1)+1+strlen($<data.val>1));
-      sprintf($<data.code>$,"%s%s",$<data.code>1,$<data.val>1);
+      sprintf($<data.code>$,"%s%s;",$<data.code>1,$<data.val>1);
     }
   else
     $<data.code>$=$<data.code>1;  
@@ -793,7 +908,7 @@ expression_statement
   $<data.code>$=malloc(2+strlen($<data.code>1)+1);
   sprintf($<data.code>$,"%s\n",$<data.code>1);
   free($<data.code>1);
- fprintf(stderr,"%s\n",$<data.code>$);
+  fprintf(stderr,"%s\n",$<data.code>$);
 }
 ;
 
@@ -810,10 +925,10 @@ selection_statement
   sprintf($<data.code>$,
 	  "%s if (%s)goto then%d;\n%s\ngoto endif%d;\nthen%d:;%s\nendif%d:;",
 	  $<data.code>3,$<data.val>3,compteurif,$<data.code>7,compteurif,compteurif,$<data.code>5,compteurif);
-   free($<data.code>7);
-   free($<data.code>3);
-   free($<data.code>5);
-   compteurif++;
+  free($<data.code>7);
+  free($<data.code>3);
+  free($<data.code>5);
+  compteurif++;
 }
 | FOR '(' expression_statement expression_statement expression ')' statement 
 {
@@ -877,10 +992,11 @@ program
 }
 | program external_declaration
 {
-  $<data.code>$=malloc(1+strlen($<data.code>1)+1+1+strlen($<data.code>2));
+  fprintf(out,"%s",$<data.code>2);
+  /* $<data.code>$=malloc(1+strlen($<data.code>1)+1+1+strlen($<data.code>2));
   sprintf($<data.code>$,"%s %s",$<data.code>1,$<data.code>2);
   free($<data.code>1);
-  free($<data.code>2);
+  free($<data.code>2);*/
 }
 ;
 
@@ -909,10 +1025,10 @@ function_definition
   $<data.t>$->retour->parametres=NULL;
   switch (*$<data.code>1)
     {
-    case('I'):
+    case('i'):
       $<data.t>$->retour->t=_INT;
       break;
-    case('V'):
+    case('v'):
       $<data.t>$->retour->t=_VOID;
       break;
     default:
