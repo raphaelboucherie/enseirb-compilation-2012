@@ -1,6 +1,7 @@
 #include "table.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 enum _type {_INT,_FLOAT,_VOID,_FONCTION};
   struct type{
     enum _type t; //0:void,1:int,2:float,3:fonction
@@ -15,9 +16,12 @@ struct type *cherche_symbole(struct table *t,char* id){
   struct symbole *s=t->premier;
   while(s!=NULL)
     {
+      fprintf(stderr,"%s==%s?",s->id,id);
       if (strcmp(s->id,id)==0)
 	return s->t;
+      s=s->suivant;
     }
+  
   if(t->englobante==NULL)
     return NULL;
   return cherche_symbole(t->englobante,id);
@@ -72,14 +76,25 @@ int verif_type_affect(struct type *a,struct type *b,char * affect_type){
     
 void ajout_symbole(struct table * courante,char * id,struct type *t)
 {
-  struct symbole*s=courante->premier;
-  while(NULL!=s)
+  if (courante->premier==NULL)
     {
-      s=s->suivant;
+      courante->premier=malloc(sizeof(*(courante->premier)));
+      courante->premier->id=id;
+      courante->premier->t=t;
+      courante->premier->suivant=NULL;
     }
-  s=malloc(sizeof(*s));
-  s->id=id;
-  s->t=t;
+  else 
+    {
+      struct symbole*s=courante->premier;
+      while(NULL!=s->suivant)
+	{
+	  s=s->suivant;
+	}
+      s->suivant=malloc(sizeof(*s));
+      s->suivant->id=id;
+      s->suivant->t=t;
+      s->suivant->suivant=NULL;
+    }
 }
 struct table *nouvelle_table(struct table * englo){
   struct table * t=malloc(sizeof(*t));
