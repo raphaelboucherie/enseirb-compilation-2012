@@ -11,6 +11,12 @@ enum _type {_INT,_FLOAT,_VOID,_FONCTION};
     int nb_parametres;
     struct type * parametres;//null sauf pour les fonctions
     };
+struct symbole
+  {
+    char * id;
+    struct type *t;
+    struct symbole *suivant;
+    };
 struct type *cherche_symbole(struct table *t,char* id){
  
   struct symbole *s=t->premier;
@@ -26,7 +32,10 @@ struct type *cherche_symbole(struct table *t,char* id){
     return NULL;
   return cherche_symbole(t->englobante,id);
 }
-int verif_type_operation(struct type* a,struct type* b)
+int verif_type_operation(struct type* a,//type de la première opérande
+			 struct type* b,//type de la deuxième opérande
+			 char c//opération : * + -
+			 )
 {
   switch (a->t){
     
@@ -34,12 +43,40 @@ int verif_type_operation(struct type* a,struct type* b)
     return 0;
     break;
   case _INT:
-    return (b->t)==_INT||(b->t==_FLOAT&&b->dimension==1);
+    if (c=='*')
+      {
+	if((b->t)==_INT)
+	  return 1;
+	if(b->t==_FLOAT&&b->dimension==1)
+	  return 2;
+	else
+	  return 0;
+      }
+    else 
+      return (b->t)==_INT;
     break;
   case _FLOAT:
-    return (b->t==_FLOAT&&(a->dimension==0||b->dimension==0||(a->dimension==1&&b->dimension==1)));
+    if (c=='*'&&b->t==_INT&&a->dimension==1)//vecteur * int 
+      return 1;
+    else
+      {
+	if (b->t!=_FLOAT)
+	  return 0;
+	if(a->dimension>1||b->dimension>1)
+	  return 0;
+	if(b->dimension==0)//b float non vecteur
+	  return 1;
+	if(a->dimension==0)//a float non vecteur et b float vecteur
+	  return 2;
+	if(a->dimensions[0]>b->dimensions[0])//a float vecteur et b float vecteur avec taille de a > taille de b
+	  return 1;
+	else //a float vecteur et b float vecteur avec taille de a < taille de b
+	  return 2;
+      
+      }
+  
     break;
-    default :
+  default :
     return 0;     
   }
 }
@@ -63,10 +100,21 @@ int verif_type_affect(struct type *a,struct type *b,char * affect_type){
       return 0;
       break;
     case _INT:
-      return (b->t==_INT)||((*affect_type=='+')&&(b->t==_FLOAT)&&(b->dimension==1));
+      return (b->t==_INT);
       break;
     case _FLOAT:
-      return (b->t==_FLOAT&&((a->dimension==0&&b->dimension==0)||(a->dimension==1&&b->dimension==1&&a->dimensions[0]<b->dimensions[0])));
+      return (b->t==_FLOAT&&
+	      (
+	       (*affect_type=='+'
+		&&b->dimension==1)
+	       ||
+	       
+	       (a->dimension==0
+		&&b->dimension==0)
+	       ||
+	       (a->dimension==1
+		&&b->dimension==1
+		&&a->dimensions[0]<b->dimensions[0])));
       break;
     default:
       return 0;

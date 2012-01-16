@@ -7,19 +7,19 @@
     int nb_parametres;
     struct type * parametres;//null sauf pour les fonctions
     };*/
-  struct symbole
+/* struct symbole
   {
     char * id;
     struct type *t;
     struct symbole *suivant;
-  };
+    };*/
   struct table{
     struct symbole *premier;
     struct table * englobante;
   };
 
 struct type *cherche_symbole(struct table *t,char* id);
-int verif_type_operation(struct type* a,struct type* b);
+int verif_type_operation(struct type* a,struct type* b,char c);
 int verif_type_moins(struct type *t);
 int verif_type_prod_scalaire(struct type *a,struct type *b);
 int verif_type_comp(struct type *a,struct type *b);
