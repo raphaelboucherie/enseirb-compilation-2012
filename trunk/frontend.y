@@ -40,7 +40,8 @@
       int* dimensions;
       struct type * retour;//null sauf pour les fonctions
       int nb_parametres;
-      struct type * parametres;//null sauf pour les fonctions
+      struct type * parametres;//null sauf pour les fonctions 
+
     }*t;
     
     char * id;
@@ -303,7 +304,7 @@ multiplicative_expression
       $<data.code>$=malloc(13+1+strlen($<data.code>1)+1+strlen($<data.code>3)+2*digit_number(tmp)+1+strlen($<data.val>3)+1+strlen($<data.val>1));
       sprintf($<data.code>$,"%s%stmp%d=%s;%s*=tmp%d;\n",$<data.code>1,$<data.code>3,tmp,$<data.val>3,$<data.val>1,tmp);
       char *c;
-      c=malloc(3+digit_number(tmp));
+      c=malloc(4+digit_number(tmp));
       sprintf(c,"tmp%d",tmp);
       ajout_symbole(T,c,$<data.t>3);
       tmp++;free($<data.code>1);free($<data.code>3);
@@ -682,7 +683,7 @@ declarator_list
 : declarator                            
 {
   $<data.code>$=$<data.code>1;
-  $<data.t>1->t=$<data.t>1->t;
+  $<data.t>1->t=$<data.t>$->t;
   ajout_symbole(T,$<data.id>1,$<data.t>1);
 }
 | declarator_list ',' declarator
@@ -739,7 +740,8 @@ declarator
   $<data.t>$->dimensions[$<data.t>$->dimension-1]=atoi($3);
   $<data.code>$=malloc(1+strlen($<data.code>1)+2+1+strlen($3));
   sprintf($<data.code>$,"%s[%s]",$<data.code>1,$3);
-  free($<data.code>1);free($3);
+  //free($<data.code>1);
+  free($3);
 }
 | declarator '[' ']'
 {
@@ -750,6 +752,7 @@ declarator
 | declarator '(' parameter_list ')'
 {
   $<data.t>$=$<data.t>1;
+  $<data>$.id=$<data>1.id;
   $<data.t>$->t=_FONCTION;
   $<data.t>$->nb_parametres=$<data.t>3->nb_parametres;
   $<data.t>$->parametres=$<data.t>3->parametres;
@@ -769,6 +772,7 @@ declarator
 parameter_list
 : parameter_declaration
 {
+  $<data.t>$=malloc(sizeof(struct type));
   $<data.t>$->nb_parametres=1;
   $<data.t>$->parametres=$<data.t>1;  
   $<data.code>$=$<data.code>1;
@@ -777,36 +781,42 @@ parameter_list
 {
   $<data.code>$=malloc(1+strlen($<data.code>1)+1+1+strlen($<data.code>3));
   sprintf($<data.code>$,"%s,%s",$<data.code>1,$<data.code>3);
-  $<data.t>$->nb_parametres++;
-  $<data.t>$->parametres=realloc( $<data.t>$->parametres,sizeof(struct type)*$<data.t>$->nb_parametres);
-  
-  $<data.t>$->parametres[$<data.t>$->nb_parametres-1]=*$<data.t>3;
-  free($<data.code>3);
-  free($<data.code>1);
+  $<data.t>$->nb_parametres=$<data.t>1->nb_parametres+1;
+  fprintf(stderr,"+++++++++++++++++%d++++++++++++%p+++++++++++++\n",sizeof(struct type)*$<data.t>$->nb_parametres,$<data.t>$->parametres);
+  int k=$<data.t>$->nb_parametres;
+  //$<data.t>$->parametres=realloc( $<data.t>$->parametres,sizeof(struct type)*k);
+  $<data.t>$->parametres=malloc(sizeof(struct type)*k);
+  memcpy($<data.t>$->parametres,$<data.t>1->parametres,sizeof(struct type)*(k-1));
+  $<data.t>$->parametres[k-1]=*($<data.t>3);
+  //free($<data.code>3);
+  //free($<data.code>1);
 }
 ;
 
 parameter_declaration
 : type_name declarator
 {
-
+  
+ 
   
   $<data.code>$=malloc(1+strlen($<data.code>1)+2+1+strlen($<data.code>2));
-  sprintf($<data.code>$,"%s %s",$<data.code>1,$<data.code>2);$<data.t>$=$<data.t>2;
+  sprintf($<data.code>$,"%s %s",$<data.code>1,$<data.code>2);
+  $<data.t>$=$<data.t>2;
   switch (*$<data.code>1)
     {
     case ('f'):
-      $<data.t>$->t=_FLOAT;
+      $<data.t>2->t=_FLOAT;
       break;
     case ('i'):
-      $<data.t>$->t=_INT;
+      $<data.t>2->t=_INT;
       break;
     default:
       fprintf(stderr,"déclaration paramètres éronée%s",$<data.code>$);
     }
-  
+  fprintf(stderr,"id=%s\ntype=%d;nb_param=%d",$<data.id>2,$<data.t>2->t,$<data.t>2->nb_parametres); 
+  ajout_symbole(T,$<data.id>2,$<data.t>2);
   free($<data.code>1);
-  free($<data.code>2);
+  //free($<data.code>2);
 }
 ;
 
@@ -1093,8 +1103,9 @@ int main (int argc, char *argv[]) {
     return 1;
   }
   out=fopen("ri.txt","w+");
-    
+  
   yyparse ();
+  cherche_symbole(T,"azer");
   fclose(out);
   fclose(input);
   free (file_name);
