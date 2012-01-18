@@ -19,6 +19,7 @@
   int compteurfor;
   int compteurif;
   int compteurwhile;
+  enum _type retour;
   
   %}
 
@@ -267,6 +268,7 @@ postfix_expression
 }
 | postfix_expression '[' expression ']'        
 {
+
   int dim=$<data.t>1->dimension;
   if (dim<2)
     {
@@ -353,6 +355,11 @@ unary_expression
 | unary_operator unary_expression                 
 
 {
+  if(!verif_type_moins($<data.t>2))
+    {
+      yyerror("l'opérateur - s'applique uniquement sur les vecteurs et les entiers");
+      exit(EXIT_FAILURE);
+    }
   $<data.t>$=$<data.t>2;
   $<data.id>$=$<data.id>2;
   $<data.code>$=$<data.code>2;
@@ -411,7 +418,7 @@ multiplicative_expression
   int k=verif_type_operation($<data.t>1,$<data.t>3,'*');
   if(k==0)
     {
-     yyerror("mul->mul*unary opérande incompatible");
+     yyerror("opérandes incompatibles");
       exit(EXIT_FAILURE);
     }
   
@@ -465,7 +472,7 @@ multiplicative_expression
   int k=verif_type_prod_scalaire($<data.t>1,$<data.t>3);
   if(k==0)
     {
-     yyerror("opérande incompatible");
+     yyerror("opérandes incompatibles");
       exit(EXIT_FAILURE);
     }
   
@@ -509,7 +516,7 @@ additive_expression
   int k=verif_type_operation($<data.t>1,$<data.t>3,'+');
   if(k==0)
     {
-     yyerror("add->add+mul opérande incompatible");
+     yyerror("opérandes incompatibles");
       exit(EXIT_FAILURE);
     }
   
@@ -554,7 +561,7 @@ additive_expression
   int k=verif_type_operation($<data.t>1,$<data.t>3,'-');
   if(k==0)
     {
-     yyerror("add->add-mul opérande incompatible");
+     yyerror("opérandes incompatibles");
       exit(EXIT_FAILURE);
     }
   
@@ -612,7 +619,7 @@ comparison_expression
 {
   if(verif_type_comp($<data.t>1,$<data.t>3))
     {
-     yyerror("add<add opérande incompatible");
+     yyerror("opérandes incompatibles");
       exit(EXIT_FAILURE);
     }
   
@@ -645,7 +652,7 @@ comparison_expression
 { 
   if(verif_type_comp($<data.t>1,$<data.t>3))
     {
-     yyerror("opérande incompatible");
+     yyerror("opérandes incompatibles");
       exit(EXIT_FAILURE);
     }
   fprintf(stderr,"**comp ->add<add**\n");
@@ -680,7 +687,7 @@ comparison_expression
 {
    if(verif_type_comp($<data.t>1,$<data.t>3))
     {
-     yyerror("opérande incompatible");
+     yyerror("opérandes incompatibles");
       exit(EXIT_FAILURE);
     }
    
@@ -724,7 +731,7 @@ comparison_expression
 {
   if(verif_type_comp($<data.t>1,$<data.t>3))
     {
-     yyerror("opérande incompatible");
+     yyerror("opérandes incompatibles");
       exit(EXIT_FAILURE);
     }
 
@@ -764,7 +771,7 @@ comparison_expression
 {
  if(verif_type_comp($<data.t>1,$<data.t>3))
     {
-     yyerror("opérande incompatible");
+     yyerror("opérandes incompatibles");
       exit(EXIT_FAILURE);
     }
  
@@ -803,7 +810,7 @@ comparison_expression
 {
    if(verif_type_comp($<data.t>1,$<data.t>3))
     {
-      yyerror("opérande incompatible");
+      yyerror("opérandes incompatibles");
       exit(EXIT_FAILURE);
     }
    
@@ -846,7 +853,7 @@ expression
 			$<data.t>3,
 			$<data.code>2))
     {
-     yyerror("affect opérande incompatible");
+     yyerror("affectation : opérandes incompatibles");
       exit(EXIT_FAILURE);
     }
   
@@ -925,6 +932,12 @@ declaration
   while(s!=NULL)
     {
       s->t->t=t;
+      if (s->t->dimension!=0&&s->t->t!=_FLOAT)
+	{
+	  yyerror("les tableaux sont obligatoirement de type float");
+	  exit(EXIT_FAILURE);
+	}
+
       ajout_symbole(T,s->id,s->t);
       s=s->suivant;
     }
@@ -996,6 +1009,7 @@ declarator
 }
 | declarator '[' CONSTANT ']'                  
 {
+
   $<data.t>$=$<data.t>1;
   $<data.t>$->dimension++;
   fprintf(stderr,"------------------------------------------------------------------\n");
@@ -1066,6 +1080,7 @@ parameter_declaration
 : type_name declarator
 {
   
+  
  
   
   $<data.code>$=malloc(1+strlen($<data.code>1)+2+1+strlen($<data.code>2));
@@ -1081,6 +1096,11 @@ parameter_declaration
       break;
     default:
       fprintf(stderr,"déclaration paramètres éronée%s",$<data.code>$);
+    }
+  if($<data.t>2->dimension!=0&&$<data.t>2->t!=_FLOAT)
+    {
+      yyerror("les tableaux sont de type float obligatoirement");
+      exit(EXIT_FAILURE);
     }
   fprintf(stderr,"id=%s\ntype=%d;nb_param=%d",$<data.id>2,$<data.t>2->t,$<data.t>2->nb_parametres); 
   ajout_symbole(T,$<data.id>2,$<data.t>2);
@@ -1252,11 +1272,21 @@ iteration_statement
 jump_statement
 : RETURN ';'                      
 {
+  if(retour!=_VOID)
+    {
+      yyerror("erreur de type de retour");
+      exit(EXIT_FAILURE);
+    }
   $<data.code>$=malloc(9);
   sprintf($<data.code>$,"return;\n");
 }
 | RETURN expression ';'
 {
+  if($<data.t>2->t!=retour)
+    {
+      yyerror("erreur de type de retour");
+      exit(EXIT_FAILURE);
+    }
   $<data.code>$=malloc(2+strlen($<data.code>2)+8+1+strlen($<data.val>2));
   sprintf($<data.code>$,"%s return %s;\n",$<data.code>2,$<data.val>2);
   free($<data.code>2);
@@ -1291,10 +1321,23 @@ external_declaration
 ;
 
 function_definition
-: type_name declarator compound_statement               
+: type_name declarator { 
+  switch (*$<data.code>1)
+    {
+    case('i'):
+      retour=_INT;
+      break;
+    case('v'):
+      retour=_VOID;
+      break;
+    default:
+      yyerror("type de retour de fonction érroné");
+      exit(EXIT_FAILURE);
+    }
+} compound_statement               
 {
-  $<data.code>$=malloc(1+strlen($<data.code>1)+2+1+strlen($<data.code>2)+1+strlen($<data.code>3));
-  sprintf($<data.code>$,"%s %s %s",$<data.code>1,$<data.code>2,$<data.code>3);
+  $<data.code>$=malloc(1+strlen($<data.code>1)+2+1+strlen($<data.code>2)+1+strlen($<data.code>4));
+  sprintf($<data.code>$,"%s %s %s",$<data.code>1,$<data.code>2,$<data.code>4);
   $<data.t>$=$<data.t>2;
   $<data.t>$->retour=malloc(sizeof(struct type));
   $<data.t>$->retour->dimension=0;
@@ -1302,21 +1345,11 @@ function_definition
   $<data.t>$->retour->retour=NULL;
   $<data.t>$->retour->nb_parametres=0;
   $<data.t>$->retour->parametres=NULL;
-  switch (*$<data.code>1)
-    {
-    case('i'):
-      $<data.t>$->retour->t=_INT;
-      break;
-    case('v'):
-      $<data.t>$->retour->t=_VOID;
-      break;
-    default:
-      fprintf(stderr,"mauvaise définition de fonction : %s",$<data.code>$);
-    }
+  $<data.t>$->retour->t=retour;;
   ajout_symbole(T,$<data.id>2,$<data.t>$);
   free($<data.code>1);
   free($<data.code>2);
-  free($<data.code>3);
+  //free($<data.code>3);
 }
 ;
 
@@ -1374,7 +1407,7 @@ int main (int argc, char *argv[]) {
   out=fopen("ri.txt","w+");
   
   yyparse ();
-  cherche_symbole(T,"azer");
+  cherche_symbole(T,"aegtvcujs");
   fclose(out);
   fclose(input);
   free (file_name);
