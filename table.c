@@ -22,7 +22,7 @@ struct type *cherche_symbole(struct table *t,char* id){
   struct symbole *s=t->premier;
   while(s!=NULL)
     {
-      fprintf(stderr,"%s==%s?",s->id,id);
+      //fprintf(stderr,"%s==%s?",s->id,id);
       if (strcmp(s->id,id)==0)
 	return s->t;
       s=s->suivant;
@@ -175,4 +175,15 @@ struct table * delete_table(struct table * courante)
   delete_symboles(courante->premier);
   free(courante);
   return(englo);
+}
+int compare_type_arguments(struct type*a,struct type *b){
+  if(a->t!=b->t||a->dimension!=b->dimension||a->nb_parametres!=b->nb_parametres)
+    return 0;
+  int i;
+  for (i=0;i<a->dimension;i++)
+    {
+      if(a->dimensions[i]!=b->dimensions[i])
+	return 0;
+    }
+  return 1;
 }
