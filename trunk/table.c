@@ -103,18 +103,19 @@ int verif_type_affect(struct type *a,struct type *b,char * affect_type){
       return (b->t==_INT);
       break;
     case _FLOAT:
-      return (b->t==_FLOAT&&
-	      (
-	       (*affect_type=='+'
-		&&b->dimension==1)
-	       ||
+      return (b->t==_INT&&a->dimension==1&&*affect_type=='*')||
+	(b->t==_FLOAT&&
+	 (
+	  (*affect_type=='+'
+	   &&b->dimension==1)
+	  ||
 	       
-	       (a->dimension==0
-		&&b->dimension==0)
-	       ||
-	       (a->dimension==1
-		&&b->dimension==1
-		&&a->dimensions[0]<b->dimensions[0])));
+	  (a->dimension==0
+	   &&b->dimension==0)
+	  ||
+	  (a->dimension==1
+	   &&b->dimension==1
+	   &&a->dimensions[0]<=b->dimensions[0])));
       break;
     default:
       return 0;

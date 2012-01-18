@@ -22,3 +22,7 @@ backend.c:backend.y
 
 clean:
 	rm -f frontend.c backend.c
+save:frontend.y table.c table.h
+	cp frontend.c frontend.save
+	cp table.c table_c.save
+	cp table.h table_h.save	
