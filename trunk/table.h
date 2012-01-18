@@ -30,3 +30,4 @@ struct table * nouvelle_table(struct table * englo);
 void delete_type(struct type * t);
 void delete_symboles(struct symbole * s);
 struct table *delete_table(struct table * courante);
+int compare_type_arguments(struct type*a,struct type *b);

@@ -95,9 +95,17 @@ primary_expression
   *($<data.code>$)='\0';
   $<data.val>$=$1;
   struct type *t=cherche_symbole(T,$1);
+  if(t==NULL)
+    {
+      char * s;
+      s=malloc(13+1+strlen($1));
+      sprintf(s,"%s non déclaré",$1);
+      yyerror(s);
+      exit(EXIT_FAILURE);
+    }
   $<data.t>$=malloc(sizeof(struct type));
   memcpy($<data.t>$,t,sizeof(struct type));
-  //$<data.id>$=$1;
+  $<data.id>$=$1;
 
 }
 | CONSTANT                                               
@@ -127,24 +135,81 @@ primary_expression
   sprintf($<data.val>$,"%s()",$1);
   struct type* t= cherche_symbole(T,$1);
   if (NULL==t)
-    fprintf(stderr,"fonction non déclarée %s",$1);
-  else
-    $<data.t>$=cherche_symbole(T,$1)->retour;
-  //  $<data.id>$=$1;
+    {
+      
+      char * s;
+      s=malloc(13+1+strlen($1));
+      sprintf(s,"%s non déclaré",$1);
+      yyerror(s);
+      exit(EXIT_FAILURE);
+    }
+  if(t->t!=_FONCTION)
+    {
+      char * s;
+      s=malloc(32+1+strlen($1));
+      sprintf(s,"%s non déclaré comme une fonction",$1);
+      yyerror(s);
+      exit(EXIT_FAILURE);
+    }
+  if(t->nb_parametres!=0)
+      {
+	char * s;
+	s=malloc(18+1+strlen($1)+digit_number(t->nb_parametres));
+	sprintf(s,"%s prend %d arguments",$1,t->nb_parametres);
+	yyerror(s);
+	exit(EXIT_FAILURE);
+      }
+    $<data.t>$=t->retour;
+    $<data.id>$=$1;
 }
+
 | IDENTIFIER '(' argument_expression_list ')'              
 {
   $<data.appel=1>$;
   $<data.code>$=$<data.code>3;
   $<data.val>$=malloc(1+strlen($1)+2+1+strlen($<data.val>3));
   sprintf($<data.val>$,"%s(%s)",$1,$<data.val>3); 
-  struct type* t= cherche_symbole(T,$1);
+  struct type* t= cherche_symbole(T,$1); 
   if (NULL==t)
-    fprintf(stderr,"fonction non déclarée %s",$1);
-  else
-    $<data.t>$=cherche_symbole(T,$1)->retour;
-  //$<data.id>$=$1;
+    {
+      char * s;
+      s=malloc(13+1+strlen($1));
+      sprintf(s,"%s non déclaré",$1);
+      yyerror(s);
+      exit(EXIT_FAILURE);
+    }
+  if(t->t!=_FONCTION){
+
+    char * s;
+    s=malloc(32+1+strlen($1));
+    sprintf(s,"%s non déclaré comme une fonction",$1);
+    yyerror(s);
+    exit(EXIT_FAILURE);
+  }
+  if(t->nb_parametres!=$<data.t>3->nb_parametres)
+    {
+      char * s;
+      s=malloc(18+1+strlen($1)+digit_number(t->nb_parametres));
+      sprintf(s,"%s prend %d arguments",$1,t->nb_parametres);
+      yyerror(s);
+      exit(EXIT_FAILURE);
+    }
+  int i;
+  for (i=0;i<t->nb_parametres;i++)
+    if(!compare_type_arguments(&t->parametres[i],&$<data.t>3->parametres[i]))
+      {
+	char * s;
+	s=malloc(43+1+strlen($1)+digit_number(i));
+	sprintf(s,"type du parametre numero %d de %s incompatible",i+1,$1);
+	yyerror(s);
+	exit(EXIT_FAILURE);
+      }
+  
+  
+  $<data.t>$=cherche_symbole(T,$1)->retour;
+  $<data.id>$=$1;
 }
+
 | IDENTIFIER INC_OP                                     
 {
   $<data.code>$=malloc(1);
@@ -153,10 +218,19 @@ primary_expression
   sprintf($<data.val>$,"%s++",$1);
   //$<data.id>$=$1; 
   struct type *t=cherche_symbole(T,$1);
+  if (NULL==t)
+    {
+      char * s;
+      s=malloc(13+1+strlen($1));
+      sprintf(s,"%s non déclaré",$1);
+      yyerror(s);
+      exit(EXIT_FAILURE);
+    }
   $<data.t>$=malloc(sizeof(struct type));
   memcpy($<data.t>$,t,sizeof(struct type));
   //$<data.t>$=cherche_symbole(T,$1);
-  $<data.appel>$=1;
+  $<data.appel>$=1;    
+  $<data.id>$=$1;
   
 }
 | IDENTIFIER DEC_OP                                        
@@ -166,11 +240,19 @@ primary_expression
   *($<data.code>$)='\0';
   $<data.val>$=malloc(1+strlen($1)+2);  
   struct type *t=cherche_symbole(T,$1);
+    if (NULL==t)
+    {
+      char * s;
+      s=malloc(13+1+strlen($1));
+      sprintf(s,"%s non déclaré",$1);
+      yyerror(s);
+      exit(EXIT_FAILURE);
+    }
   $<data.t>$=malloc(sizeof(struct type));
   memcpy($<data.t>$,t,sizeof(struct type));
   sprintf($<data.val>$,"%s--",$1);
-  //$<data.t>$=cherche_symbole(T,$1);
-  //$<data.id>$=$1;
+  
+  $<data.id>$=$1;
   
 }
 ;
@@ -181,9 +263,26 @@ postfix_expression
   $<data.code>$=$<data.code>1;
   $<data.val>$=$<data.val>1;
   $<data.t>$=$<data.t>1;
+  $<data.id>$=$<data.id>1;
 }
 | postfix_expression '[' expression ']'        
 {
+  int dim=$<data.t>1->dimension;
+  if (dim<2)
+    {
+      char * s;
+      if(dim==1){
+	yyerror("l'accès aux éléments d'un vecteur est interdit");
+	exit(EXIT_FAILURE);
+      }
+      if (dim==0)
+	{
+	  s=malloc(22+1+strlen($<data.val>1));
+	  sprintf(s,"%s n'est pas un tableau",$<data.val>1);
+	  yyerror(s);
+	  exit(EXIT_FAILURE);
+	}
+    }
   $<data.code>$=malloc(1+strlen($<data.code>1)+1+1+strlen($<data.code>3));
   sprintf($<data.code>$,"%s %s",$<data.code>1,$<data.code>3);
   $<data.val>$=malloc(1+strlen($<data.val>1)+1+strlen($<data.val>3)+2);
@@ -203,9 +302,19 @@ argument_expression_list
   $<data.code>$=$<data.code>1;
   $<data.val>$=malloc(1+strlen($<data.val>1));
   sprintf($<data.val>$,"%s",$<data.val>1);
+  $<data.t>$=malloc(sizeof(struct type));
+  $<data.t>$->nb_parametres=1;
+  $<data.t>$->parametres=$<data.t>1;
+  
 }
 | argument_expression_list ',' expression
 {
+  int k=$<data.t>1->nb_parametres+1;
+  struct type *t=malloc(sizeof(struct type)*k);
+  memcpy(t,$<data.t>1->parametres,sizeof(struct type)*(k-1));
+  t[k-1]=*($<data.t>3);
+  $<data.t>$->parametres=t;
+  $<data.t>$->nb_parametres=k;
   $<data.code>$=malloc(1+strlen($<data.code>1)+1+1+strlen($<data.code>3));
   sprintf($<data.code>$,"%s %s",$<data.code>1,$<data.code>3);
   $<data.val>$=malloc(1+strlen($<data.val>1)+1+strlen($<data.val>3));
@@ -718,7 +827,7 @@ comparison_expression
   ajout_symbole(T,c,t);
 		      
 
- $<data.t>$=t;
+  $<data.t>$=t;
   tmpcomp++;
   free($<data.code>1);
   free($<data.code>3);
@@ -750,6 +859,15 @@ expression
   fprintf(stderr,"%s\n",$<data.code>$);
   $<data.val>$=malloc(2);
   sprintf($<data.val>$,"1");
+  $<data.t>$=malloc(sizeof(struct type));
+  $<data.t>$->t=_INT;
+  $<data.t>$->dimension=0;
+  $<data.t>$->dimensions=NULL;
+  $<data.t>$->nb_parametres=0;
+  $<data.t>$->parametres=NULL;
+  $<data.t>$->retour=NULL;
+  
+  
 }
 
 | comparison_expression                                             
