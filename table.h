@@ -18,7 +18,7 @@
     struct table * englobante;
   };
 
-struct type *cherche_symbole(struct table *t,char* id);
+struct type *cherche_symbole(struct table *t,char* id,int bool;);
 int verif_type_operation(struct type* a,struct type* b,char c);
 int verif_type_moins(struct type *t);
 int verif_type_prod_scalaire(struct type *a,struct type *b);

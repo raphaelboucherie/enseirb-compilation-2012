@@ -17,7 +17,7 @@ struct symbole
     struct type *t;
     struct symbole *suivant;
     };
-struct type *cherche_symbole(struct table *t,char* id){
+struct type *cherche_symbole(struct table *t,char* id,int bool){
  
   struct symbole *s=t->premier;
   while(s!=NULL)
@@ -27,10 +27,13 @@ struct type *cherche_symbole(struct table *t,char* id){
 	return s->t;
       s=s->suivant;
     }
-  
-  if(t->englobante==NULL)
-    return NULL;
-  return cherche_symbole(t->englobante,id);
+  if(bool){
+    
+    if(t->englobante==NULL)
+      return NULL;
+    return cherche_symbole(t->englobante,id,1);
+  }
+  return NULL;
 }
 int verif_type_operation(struct type* a,//type de la première opérande
 			 struct type* b,//type de la deuxième opérande
@@ -155,11 +158,11 @@ void delete_type(struct type * t)
 {
   //if(t->dimension!=0)
   //free(t->dimensions);
-  if(t->retour!=NULL)
-    free(t->retour);
+  //if(t->retour!=NULL)
+  //free(t->retour);
   int i;
-  for(i=0;i<t->nb_parametres;i++)
-    delete_type(&t->parametres[i]);
+  //for(i=0;i<t->nb_parametres;i++)
+  //delete_type(&t->parametres[i]);
   free(t);
 }
 void delete_symboles(struct symbole * s)

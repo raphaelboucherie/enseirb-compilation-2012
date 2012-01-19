@@ -21,7 +21,7 @@
   int compteurif;
   int compteurwhile;
   enum _type retour;
-  
+  void verif_decla(struct table *t,char *s);
   %}
 
 %token <str> IDENTIFIER CONSTANT
@@ -96,7 +96,7 @@ primary_expression
   $<data.code>$=malloc(1);
   *($<data.code>$)='\0';
   $<data.val>$=$1;
-  struct type *t=cherche_symbole(T,$1);
+  struct type *t=cherche_symbole(T,$1,1);
   if(t==NULL)
     {
       char * s;
@@ -171,7 +171,7 @@ primary_expression
   $<data.code>$=$<data.code>3;
   $<data.val>$=malloc(1+strlen($1)+2+1+strlen($<data.val>3));
   sprintf($<data.val>$,"%s(%s)",$1,$<data.val>3); 
-  struct type* t= cherche_symbole(T,$1); 
+  struct type* t= cherche_symbole(T,$1,1); 
   if (NULL==t)
     {
       char * s;
@@ -208,7 +208,7 @@ primary_expression
       }
   
   
-  $<data.t>$=cherche_symbole(T,$1)->retour;
+  $<data.t>$=t->retour;
   $<data.id>$=$1;
   free($<data.val>3);
 
@@ -221,7 +221,7 @@ primary_expression
   $<data.val>$=malloc(1+strlen($1)+2);
   sprintf($<data.val>$,"%s++",$1);
   //$<data.id>$=$1; 
-  struct type *t=cherche_symbole(T,$1);
+  struct type *t=cherche_symbole(T,$1,1);
   if (NULL==t)
     {
       char * s;
@@ -243,7 +243,7 @@ primary_expression
   $<data.code>$=malloc(1);
   *($<data.code>$)='\0';
   $<data.val>$=malloc(1+strlen($1)+2);  
-  struct type *t=cherche_symbole(T,$1);
+  struct type *t=cherche_symbole(T,$1,1);
   if (NULL==t)
     {
       char * s;
@@ -961,7 +961,7 @@ declaration
 	  yyerror("les tableaux sont obligatoirement de type float");
 	  exit(EXIT_FAILURE);
 	}
-
+      verif_decla(T,s->id);
       ajout_symbole(T,s->id,s->t);
       s2=s;
       s=s->suivant;
@@ -1138,6 +1138,7 @@ parameter_declaration
       exit(EXIT_FAILURE);
     }
   //fprintf(stderr,"id=%s\ntype=%d;nb_param=%d",$<data.id>2,$<data.t>2->t,$<data.t>2->nb_parametres); 
+  verif_decla(T,$<data.id>2);
   ajout_symbole(T,$<data.id>2,$<data.t>2);
   free($<data.code>1);
   //free($<data.code>2);
@@ -1183,9 +1184,10 @@ compound_statement
 | '{' {T=nouvelle_table(T);} statement_list '}'                               
 {
   char * decla=decla_tmp(T);
-  T=delete_table(T);
+ fprintf(stderr,"%s\n",decla);
+ T=T->englobante;//delete_table(T);
   
-  fprintf(stderr,"%s\n",decla);
+  
   $<data.code>$=malloc(1+strlen($<data.code>3)+2+strlen(decla));
   sprintf($<data.code>$,"%s%s}",decla,$<data.code>3);
   free($<data.code>3);
@@ -1392,6 +1394,7 @@ function_definition
    $<data.t>$->retour->nb_parametres=0;
    $<data.t>$->retour->parametres=NULL;
    $<data.t>$->retour->t=retour;
+   verif_decla(T,$<data.id>2);
    ajout_symbole(T,$<data.id>2,$<data.t>$);
    free($<data.code>1);
    free($<data.code>2);
@@ -1414,6 +1417,15 @@ int yyerror (char *s) {
   fflush (stdout);
   fprintf (stderr, "%s:%d:%d: %s\n", file_name, yylineno, column, s);
   return 0;
+}
+void verif_decla(struct table *t,char *id){
+  if(cherche_symbole(T,id,0)!=NULL)
+    {
+      char *s=malloc(20+strlen(id)+1);
+      sprintf(s,"%s est déja déclaré",id);
+      yyerror(s);
+      free(s);
+    }
 }
 int digit_number(int k){
   if (k==0)
@@ -1498,7 +1510,7 @@ int main (int argc, char *argv[]) {
   out=fopen("ri.txt","w+");
   
   yyparse ();
-  cherche_symbole(T,"aegtvcujs");
+  cherche_symbole(T,"aegtvcujs",1);
   fclose(out);
   fclose(input);
   free (file_name);
