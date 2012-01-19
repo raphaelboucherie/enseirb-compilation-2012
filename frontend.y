@@ -969,7 +969,7 @@ declaration
     }
   
   free($<data.code>1);
-  //  free($<data.code>2);
+  //free($<data.code>2);
 }
 ;
 
@@ -1391,7 +1391,7 @@ function_definition
    $<data.t>$->retour->retour=NULL;
    $<data.t>$->retour->nb_parametres=0;
    $<data.t>$->retour->parametres=NULL;
-   $<data.t>$->retour->t=retour;;
+   $<data.t>$->retour->t=retour;
    ajout_symbole(T,$<data.id>2,$<data.t>$);
    free($<data.code>1);
    free($<data.code>2);
