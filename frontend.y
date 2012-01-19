@@ -210,6 +210,8 @@ primary_expression
   
   $<data.t>$=cherche_symbole(T,$1)->retour;
   $<data.id>$=$1;
+  free($<data.val>3);
+
 }
 
 | IDENTIFIER INC_OP                                     
@@ -931,6 +933,7 @@ declaration
   $<data.code>$=malloc(1+strlen($<data.code>1)+2+1+strlen($<d.code>2));
   sprintf($<data.code>$,"%s %s;\n",$<data.code>1,$<d.code>2);
   struct symbole *s=$<d.s>2;
+  struct symbole *s2;
   enum _type t;
     
   switch (*$<data.code>1)
@@ -960,8 +963,11 @@ declaration
 	}
 
       ajout_symbole(T,s->id,s->t);
+      s2=s;
       s=s->suivant;
+      free(s2);
     }
+  
   free($<data.code>1);
   //  free($<data.code>2);
 }
@@ -1056,7 +1062,8 @@ declarator
   $<data.t>$->nb_parametres=$<data.t>4->nb_parametres;
   $<data.t>$->parametres=$<data.t>4->parametres;
   $<data.code>$=malloc(1+strlen($<data.code>1)+2+1+strlen($<data.code>4));
-  sprintf($<data.code>$,"%s(%s)",$<data.code>1,$<data.code>4);//free($<data.code>1);free($<data.code>3);
+  sprintf($<data.code>$,"%s(%s)",$<data.code>1,$<data.code>4);//free($<data.code>1);
+  free($<data.code>4);
 }
 | declarator '(' ')'          
 { 
@@ -1094,7 +1101,7 @@ parameter_list
 
   //memcpy($<data.t>$->parametres,$<data.t>1->parametres,sizeof(struct type)*(k-1));
   //$<data.t>$->parametres[k-1]=*($<data.t>3);
-  //free($<data.code>3);
+  free($<data.code>3);
   //free($<data.code>1);
 }
 ;
@@ -1176,19 +1183,21 @@ compound_statement
 | '{' {T=nouvelle_table(T);} statement_list '}'                               
 {
   char * decla=decla_tmp(T);
-  T=T->englobante;
+  T=delete_table(T);
   
   fprintf(stderr,"%s\n",decla);
   $<data.code>$=malloc(1+strlen($<data.code>3)+2+strlen(decla));
   sprintf($<data.code>$,"%s%s}",decla,$<data.code>3);
   free($<data.code>3);
+  free(decla);
 }
 | '{' {T=nouvelle_table(T);}declaration_list statement_list '}'              
 {
   char * decla=decla_tmp(T);
-  T=T->englobante;
+  T=delete_table(T);
   $<data.code>$=malloc(1+strlen($<data.code>3)+3+1+strlen($<data.code>4)+1+strlen(decla));
   sprintf($<data.code>$,"%s%s %s}",decla,$<data.code>3,$<data.code>4);
+  free(decla);
   free($<data.code>4);
   free($<data.code>3);
 }
@@ -1386,7 +1395,7 @@ function_definition
    ajout_symbole(T,$<data.id>2,$<data.t>$);
    free($<data.code>1);
    free($<data.code>2);
-   //free($<data.code>3);
+   free($<data.code>4);
  }
 ;
 
@@ -1493,5 +1502,6 @@ int main (int argc, char *argv[]) {
   fclose(out);
   fclose(input);
   free (file_name);
+  
   return 0;
 }

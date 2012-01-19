@@ -153,10 +153,13 @@ struct table *nouvelle_table(struct table * englo){
 }
 void delete_type(struct type * t)
 {
-  if(t->dimensions!=NULL)
-    free(t->dimensions);
+  //if(t->dimension!=0)
+  //free(t->dimensions);
   if(t->retour!=NULL)
     free(t->retour);
+  int i;
+  for(i=0;i<t->nb_parametres;i++)
+    delete_type(&t->parametres[i]);
   free(t);
 }
 void delete_symboles(struct symbole * s)
