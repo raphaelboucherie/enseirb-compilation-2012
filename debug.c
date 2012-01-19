@@ -14,8 +14,6 @@ int debugLevel = 0;
 
 /** \brief Indique s'il y a déjà eu une erreur ou pas
  * 
- * Permet par la suite au programme de savoir s'il doit générer le code 3
- * adresse.
  */
 bool errorIsSet = false;
 
@@ -68,13 +66,6 @@ void setDebugLevel( int argc, char **argv )
   {
     if( strcmp(argv[i],"-d") == 0 )
       debugLevel |= DEBUG_MSG;
-    else if( strcmp(argv[i],"-l") == 0 )
-      debugLevel |= DEBUG_LEXEMES;
   }
 }
 
-void debugEcho(string str)
-{
-  if( debugLevel & DEBUG_MSG )
-    cerr << ">> DEBUG : " << str << endl;
-}

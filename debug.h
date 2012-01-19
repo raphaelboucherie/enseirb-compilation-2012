@@ -56,10 +56,9 @@ int yyerror(char *s);
  */
 void setDebugLevel( int argc, char** argv );
 
-/// Affiche un message de debug
-void debugEcho(string);
 
-/// Affiche un lexème lu,
-void debugLexeme(char *);
+/// Affiche un message de debug
+void debugEcho(char *s);
+
 
 #endif
