@@ -439,7 +439,7 @@ multiplicative_expression
 	  sprintf($<data.code>$,"%s%s%s=%s;_tmp%d=%s;%s*=_tmp%d;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,tmp,$<data.val>3,$<data.val>$,tmp);
 	  ajout_symbole(T,$<data.val>$,$<data.t>3);
 	  char *c;
-	  c=malloc(5+digit_number(tmp));
+	  c=malloc(6+digit_number(tmp));
 	  sprintf(c,"_tmp%d",tmp);
 	  ajout_symbole(T,c,$<data.t>3);
 	  tmp++;tmpmul++;
@@ -455,7 +455,7 @@ multiplicative_expression
 	  $<data.code>$=malloc(15+1+strlen($<data.code>1)+1+strlen($<data.code>3)+2*digit_number(tmp)+1+strlen($<data.val>3)+1+strlen($<data.val>1));
 	  sprintf($<data.code>$,"%s%s_tmp%d=%s;%s*=_tmp%d;\n",$<data.code>1,$<data.code>3,tmp,$<data.val>3,$<data.val>1,tmp);
 	  char *c;
-	  c=malloc(5+digit_number(tmp));
+	  c=malloc(6+digit_number(tmp));
 	  sprintf(c,"_tmp%d",tmp);
 	  ajout_symbole(T,c,$<data.t>3);
 	  tmp++;free($<data.code>1);free($<data.code>3);
@@ -464,7 +464,7 @@ multiplicative_expression
     }
   else
     {
-      $<data.val>$=malloc(5+digit_number(tmp)); 
+      $<data.val>$=malloc(6+digit_number(tmp)); 
       sprintf($<data.val>$,"_tmp%d",tmp);
       $<data.code>$=malloc(1+strlen($<data.code>1)+6+2*(1+strlen($<data.val>$))+strlen($<data.val>1)+1+strlen($<data.code>3)+strlen($<data.val>3)+1);
       sprintf($<data.code>$,"%s%s%s=%s;%s*=%s;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>3,$<data.val>$,$<data.val>1);
@@ -491,7 +491,7 @@ multiplicative_expression
   $<data.code>$=malloc(51+strlen($<data.code>1)+strlen($<data.code>3)+3*digit_number(tmp)+2*digit_number(tmpmul));
   sprintf($<data.code>$,"%s%s_tmp%d=%s;_tmp%d*=%s;_tmpmul%d=0;_tmpmul%d+=_tmp%d;\n",$<data.code>1,$<data.code>3,tmp,$<data.val>1,tmp,$<data.val>3,tmpmul,tmpmul,tmp);
   char *c;
-  c=malloc(5+digit_number(tmp));
+  c=malloc(6+digit_number(tmp));
   sprintf(c,"_tmp%d",tmp);
   ajout_symbole(T,c,$<data.t>1);
   c=realloc(c,6+digit_number(tmpmul));
@@ -540,7 +540,7 @@ additive_expression
 	  sprintf($<data.code>$,"%s%s%s=%s;_tmp%d=%s;%s+=_tmp%d;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,tmp,$<data.val>3,$<data.val>$,tmp);
 	  ajout_symbole(T,$<data.val>$,$<data.t>3);
 	  char *c;
-	  c=malloc(5+digit_number(tmp));
+	  c=malloc(6+digit_number(tmp));
 	  sprintf(c,"_tmp%d",tmp);
 	  ajout_symbole(T,c,$<data.t>3);
 	  tmp++;tmpmul++;
@@ -559,7 +559,7 @@ additive_expression
     }
   else
     {
-      $<data.val>$=malloc(5+digit_number(tmp)); 
+      $<data.val>$=malloc(6+digit_number(tmp)); 
       sprintf($<data.val>$,"_tmp%d",tmp);
       $<data.code>$=malloc(1+strlen($<data.code>1)+6+2*(1+strlen($<data.val>$))+strlen($<data.val>1)+1+strlen($<data.code>3)+strlen($<data.val>3)+1);
       sprintf($<data.code>$,"%s%s%s=%s;%s+=%s;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>3,$<data.val>$,$<data.val>1);
@@ -588,7 +588,7 @@ additive_expression
 	  sprintf($<data.code>$,"%s%s%s=%s;_tmp%d=%s;%s-=_tmp%d;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>1,tmp,$<data.val>3,$<data.val>$,tmp);
 	  ajout_symbole(T,$<data.val>$,$<data.t>3);
 	  char *c;
-	  c=malloc(5+digit_number(tmp));
+	  c=malloc(6+digit_number(tmp));
 	  sprintf(c,"_tmp%d",tmp);
 	  ajout_symbole(T,c,$<data.t>3);
 	  tmp++;tmpmul++;
@@ -607,7 +607,7 @@ additive_expression
     }
   else
     {
-      $<data.val>$=malloc(5+digit_number(tmp)); 
+      $<data.val>$=malloc(6+digit_number(tmp)); 
       sprintf($<data.val>$,"_tmp%d",tmp);
       $<data.code>$=malloc(1+strlen($<data.code>1)+6+2*(1+strlen($<data.val>$))+strlen($<data.val>1)+1+strlen($<data.code>3)+strlen($<data.val>3)+1);
       sprintf($<data.code>$,"%s%s%s=%s;%s-=%s;\n",$<data.code>1,$<data.code>3,$<data.val>$,$<data.val>3,$<data.val>$,$<data.val>1);
@@ -1196,7 +1196,7 @@ compound_statement
 | '{' {T=nouvelle_table(T);}declaration_list statement_list '}'              
 {
   char * decla=decla_tmp(T);
-  T=delete_table(T);
+  T=T->englobante;//delete_table(T);
   $<data.code>$=malloc(1+strlen($<data.code>3)+3+1+strlen($<data.code>4)+1+strlen(decla));
   sprintf($<data.code>$,"%s%s %s}",decla,$<data.code>3,$<data.code>4);
   free(decla);
