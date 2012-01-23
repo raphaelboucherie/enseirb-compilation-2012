@@ -22,7 +22,7 @@ struct type *cherche_symbole(struct table *t,char* id,int bool){
   struct symbole *s=t->premier;
   while(s!=NULL)
     {
-      //fprintf(stderr,"%s==%s?",s->id,id);
+      
       if (strcmp(s->id,id)==0)
 	return s->t;
       s=s->suivant;
@@ -156,13 +156,9 @@ struct table *nouvelle_table(struct table * englo){
 }
 void delete_type(struct type * t)
 {
-  //if(t->dimension!=0)
-  //free(t->dimensions);
-  //if(t->retour!=NULL)
-  //free(t->retour);
-  int i;
-  //for(i=0;i<t->nb_parametres;i++)
-  //delete_type(&t->parametres[i]);
+ 
+
+ 
   free(t);
 }
 void delete_symboles(struct symbole * s)
